@@ -1,0 +1,485 @@
+---
+title: 'Module 4: Bayesian hierarchical modeling'
+author: "[Kevin Ross (Cal Poly)](https://statistics.calpoly.edu/Kevin-Ross) and [Jingchen (Monika) Hu (Vassar)](https://pages.vassar.edu/jihu/)"
+format:
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: true
+---
+
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+
+library(knitr)
+
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
+
+```
+
+# Introduction {#sec-introduction}
+
+In many applications, observations are nested in groups, such as students' test scores from different schools and movie ratings from different genres. 
+
+For such applications, on the one hand, following the commonly used independent assumption of observations is not very appropriate. In terms of (Bayesian) modeling, this means treating observations as $i.i.d.$ from the same distribution with the same parameter(s) is not sensible. On the other hand, using either separate estimates (i.e., treating each group as separate from each other and build a model for each group) or combined estimates (i.e., treating all observations as one and build one model for all observations) seems not ideal. 
+
+In Bayesian modeling, the hierarchical model approach can effectively take into account of the fact that observations belong to different groups, while simultaneously borrowing information across groups so that groups with few observations can have improved inference. As usual, model parameters are considered as random and therefore one can use **prior** distributions to quantify the degree of uncertainty in these parameters. With appropriate **Markov chain Monte Carlo (MCMC)** estimation tools, one could arrive at the **posterior** distributions of these parameters, based on which one can answer relevant research questions.
+
+In this Module, we will introduce a sample of animation movie ratings from 2010 and illustrate the usefulness of Bayesian hierarchical models in such settings. We will walk through the details of a hierarchical model that can be built for the movie ratings sample, how to perform MCMC estimation using the ```brms``` R package and how to perform MCMC diagnostics with 2 MCMC chains, and several posterior inference techniques to answer relevant questions about the data.
+
+
+# Observations in groups (~5 minutes) {#sec-obs-in-groups}
+
+## Review of normal model \& normal regression
+
+When you have continuous outcomes, you can use a normal model.
+\begin{equation*}
+Y_i \mid \mu, \sigma \overset{i.i.d.}{\sim} \textrm{Normal}(\mu, \sigma), \,\,\, i = 1, \cdots, n.
+\end{equation*}
+
+When you have predictor variables available, $\{x_{i1}, \cdots, x_{ip}\}$; you can specify an observation specific mean:
+\begin{equation*}
+Y_i \mid \mu_i, \sigma \overset{ind}{\sim} \textrm{Normal}(\mu_i, \sigma), \,\,\, i = 1, \cdots, n,
+\end{equation*}
+where 
+\begin{equation*}
+\mu_i = \beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2} + \cdots, \beta_p x_{ip}.
+\end{equation*}
+
+**In these models, observations are assumed independent.**
+
+## When observations are not necessarily nndependent
+
+Observations can be dependent in several ways.
+
+Examples of observations nested in groups include:
+
+- Students’ test scores from multiple schools
+- Ratings of movies of different genres
+- Ratings of dramas of different schedules
+- Death rates of hospitals
+
+::: {.panel-tabset}
+## Questions
+Can you think of additional examples of observations in groups?
+:::
+
+We will focus on a movie rating dataset to explore modeling approaches for dependent data.
+
+
+# A sample of animation movie ratings from 2010 (~5 minutes) {#sec-movie-data}
+
+## Ratings of animation movies
+
+The example is from [Chapter 10.2 of Probability and Bayesian Modeling book](https://bayesball.github.io/BOOK/bayesian-hierarchical-modeling.html#hierarchical-normal-modeling).
+
+MovieLens is a personalized movie recommendation for users. In one study, a sample on movie ratings for 8 animation movies released in 2010, total 55 ratings. Each rating is for a movie completed by a user; some movies have many ratings while others have few. There is a natural grouping of these 55 ratings: by movie title. **Our interest lies in understanding the mean ratings of these 8 animation movies.**
+
+## Exploratory data analysis
+
+::: panel-tabset
+## Code and visualization
+
+```{r, echo = TRUE}
+library(tidyverse)
+
+MovieRatings <- read.csv("2010_animation_ratings.csv", header = TRUE, sep = ",")
+
+MovieRatings %>%
+  mutate(Title = as.character(title),
+         Title = recode(Title,
+                  "Shrek Forever After (a.k.a. Shrek: The Final Chapter) (2010)" = "Shrek Forever",
+                  "How to Train Your Dragon (2010)" = "Dragon",
+                  "Toy Story 3 (2010)" = "Toy Story 3",
+                  "Tangled (2010)" = "Tangled",
+                  "Despicable Me (2010)" = "Despicable Me",
+                  "Legend of the Guardians: The Owls of Ga'Hoole (2010)" = "Guardians",
+                  "Megamind (2010)" = "Megamind",
+                  "Batman: Under the Red Hood (2010)" = "Batman")) ->
+           MovieRatings
+
+ggplot(MovieRatings, aes(Title, rating)) +
+  geom_jitter(width = 0.2,
+              size = 3) +
+  coord_flip() +
+  theme_bw(base_size = 15) + 
+  ylab("Rating")
+```
+
+
+## Summary statistics
+
+| Movie Title                | Mean |   SD |  N |
+| :------------------------- | ---: | ---: | -: |
+| Batman: Under the Red Hood | 5.00 |      |  1 |
+| Despicable Me              | 3.72 | 0.62 |  9 |
+| How to Train Your Dragon   | 3.41 | 0.86 | 11 |
+| Legend of the Guardians    | 4.00 |      |  1 |
+| Megamind                   | 3.38 | 1.31 |  4 |
+| Shrek Forever After        | 4.00 | 1.32 |  3 |
+| Tangled                    | 4.20 | 0.89 | 10 |
+| Toy Story 3                | 3.81 | 0.96 | 16 |
+
+## Questions
+Describe the movie ratings given the shown plot. Do you observe any challenges in modeling?
+
+## Short solution
+Some movies only receive one rating (e.g., Guardians and Batman). With only one sample point, it is difficult to make inference about the mean rating for these movies.
+
+:::
+
+## Modeling challenges for nested observations and potential solutions
+
+- Approach 1 - separate estimates for each movie $j$:
+\begin{equation*}
+Y_{1j}, \cdots, Y_{n_j j} \overset{i.i.d.}{\sim} \textrm{Normal}(\mu_j, \sigma_j)
+\end{equation*}
+    - Challenge: No relation among groups; groups with small sample size might suffer (e.g., $n_j = 1$).
+
+- Approach 2 - combined estimates for all $J$ movies:
+\begin{equation*}
+Y_{ij} \overset{i.i.d.}{\sim} \textrm{Normal}(\mu, \sigma)
+\end{equation*}
+    - Challenge: Differences in groups are ignored.
+
+Let's try something in between: hierarchical/multilevel modeling
+
+- Pooling information across groups.
+- Achieved through a two-stage prior.
+
+# A hierarchical model with random $\sigma$ (~15 minutes) {#sec-hierarchical-model}
+
+## The sampling model
+
+Without loss of generality, let's assume a group-specific normal model for movie $j$.
+
+\begin{eqnarray}
+Y_{ij} \overset{i.i.d.}{\sim} \textrm{Normal}(\mu_j, \sigma)
+\end{eqnarray}
+where $i = 1, \cdots, n_j$ and $n_j$ is the number of observations in group $j$
+
+::: {.panel-tabset}
+
+### Questions
+1. How many parameters and what are they in this hierarchical model? 
+2. What types of prior distributions you would like to give to them and why?
+3. Do you think a commonly shared $\sigma$ is reasonable? Why or why not? If not, what can you do?
+
+### Short solution
+1. The model parameters include $\{\mu_1, \cdots, \mu_J, \sigma\}$. Since $J = 8$, we have 9 model parameters. 
+2. It seems that we could use normal prior for the $\mu_j$'s and Cauchy prior for $\sigma$ as we have done in the regression settings.
+3. From the summary statistics SD column, the standard deviation of ratings for each movie might not be similar to each other. It therefore makes sense to consider movie-specific $\sigma_j$.
+:::
+
+## A two-stage prior for $\{\mu_1, \cdots, \mu_J\}$
+
+Since all movies are animation movies, we could assume that the mean ratings are similar across movies.
+
+In the first stage, we assume the same normal prior distribution for each mean $\mu_j$.
+\begin{equation}
+\mu_j \mid \mu, \tau \sim \textrm{Normal}(\mu, \tau)
+\end{equation}
+
+This prior allows information pooled across movies (groups)
+- If $\tau$ is large, the $\mu_j$'s are very different a priori $\rightarrow$ modest pooling in parameter estimation
+- If $\tau$ is small, the $\mu_j$'s are very similar a priori $\rightarrow$ large pooling in parameter estimation
+
+$\mu$ and $\tau$ are called **hyperparameters**, and treated as random.
+
+In the second stage, we provide weakly informative **hyperpriors** for hyperparameters
+\begin{eqnarray}
+\mu &\sim& \textrm{Normal}(3, 1) \\
+\tau &\sim& \textrm{Cauchy}(0, 1)
+\end{eqnarray}
+
+**After posterior inference, the posterior of $\mu$ is informative about an average mean rating, and the posterior of $\tau$ is informative about the variation among the $\mu_j$'s.**
+    
+## Prior for $\sigma$ and graphical pepresentation
+
+Let's provide weakly informative prior for $\sigma$:
+\begin{eqnarray}
+\sigma &\sim& \textrm{Cauchy}(0, 1)
+\end{eqnarray}
+
+Often times, it is useful to use a graphical representation of a hierarchical model, so that the relationships among data, parameters, and hyperparameters can be visualized.
+
+![A graphical representation of the hierarchical model.](figures/treediagram.png)
+
+::: {.panel-tabset}
+
+### Questions
+Describe how the graphical representation corresponds to the hierarchical model. What parameters/hyperparameters are shared among what?
+
+### Short solution
+The hyperparameters $\mu$ and $\tau$ are shared among all parameters of $\mu_j$'s, whereas the parameter $\sigma$ is shared among all normal data models of $Y_{ij}$'s, each for a movie $j$.
+:::
+
+# Bayesian inference with the brms package (~15 minutes) {#sec-brms-fit}
+
+## Fitting the model
+
+We will be using the [```brms``` R package](https://cran.r-project.org/web/packages/brms/index.html) to perform MCMC estimation for the hierarchical model in this Module.
+
+```{r}
+# make sure to install and load the library
+## install.packages("brms")
+library(brms)
+```
+
+In order to fit the hierarchical model where the data model is normal, we use the ```brm()``` function with ```family = gaussian```. Moreover, we use ```rating \~ 1 + 1 | Title``` expression for hierarchical model specification.
+
+```{r, warning = FALSE, message = FALSE, echo = TRUE, results = 'hide'}
+hm_fit <- brm(data = MovieRatings, 
+              family = gaussian,
+              rating ~ 1 + (1 | Title),
+              prior = c(prior(normal(3, 1), class = Intercept),
+                        prior(cauchy(0, 1), class = sd),
+                        prior(cauchy(0, 1), class = sigma)),
+              iter = 20000, 
+              warmup = 10000, 
+              thin = 10, 
+              chains = 2, 
+              seed = 1234)
+```
+
+::: {.panel-tabset}
+
+### Questions
+Review the example code above. How many MCMC iterations was run and how many MCMC iterations was saved?
+
+### Short solution
+There were 20000 MCMC iterations and 10000 for the warmup, meaning the last 10000 iterations were saved from each chain. Moreover, since ```thin = 10```, only 10\% of the iterations, which are 1000, were saved from each chain. With two chains, we have 2000 MCMC iterations saved. 
+:::
+
+## Extracting posterior draws
+
+In order to extract posterior parameter draws, we can save ```post_hm``` as a matrix of simulated posterior draws. Recall the model parameters: $\{\mu, \tau, \mu_1, \cdots, \mu_8, \sigma\}$.
+
+```{r, warning = FALSE, message = FALSE, echo = TRUE}
+post_hm <- as_draws_df(hm_fit)
+print(post_hm)
+```
+
+::: {.panel-tabset}
+
+### Questions
+How many rows are there in ```post_hm```?
+
+### Short solution
+Since 2000 MCMC iterations were saved, there should be 2000 rows in ```post_hm```.
+
+:::
+## Posterior plots
+
+We now introduce a few functions to create posterior plots.
+
+The function ```mcmc_areas()``` displays a density estimate of the simulated posterior draws with a specified credible interval
+
+::: {.panel-tabset}
+
+### Code and plot for various means
+
+```{r fig.align = "center", echo = TRUE}
+library(bayesplot)
+mcmc_areas(post_hm, 
+           pars = c("b_Intercept", 
+                    "r_Title[Batman,Intercept]", 
+                    "r_Title[Despicable.Me,Intercept]", 
+                    "r_Title[Dragon,Intercept]",
+                    "r_Title[Guardians,Intercept]",
+                    "r_Title[Megamind,Intercept]",
+                    "r_Title[Shrek.Forever,Intercept]",
+                    "r_Title[Tangled,Intercept]",
+                    "r_Title[Toy.Story.3,Intercept]"), 
+           prob = 0.95)
+```
+
+
+### Code and plot for various standard deviations
+
+Between-group variability $\tau$ vs within-group variability $\sigma$.
+
+
+```{r fig.align = "center", echo = TRUE}
+library(bayesplot)
+mcmc_areas(post_hm, 
+           pars = c("sd_Title__Intercept", "sigma"), 
+           prob = 0.95)
+```
+
+### Questions
+Describe your findings about $\mu$ and $\mu_j$'s, as well as about $\tau$ and $\sigma$ from the printed posterior plots.
+
+:::
+
+## MCMC diagnostics
+
+```{r, eval = FALSE, echo = TRUE}
+hm_fit <- brm(data = MovieRatings, 
+              family = gaussian,
+              rating ~ 1 + (1 | Title),
+              prior = c(prior(normal(3, 1), class = Intercept),
+                        prior(cauchy(0, 1), class = sd),
+                        prior(cauchy(0, 1), class = sigma)),
+              iter = 20000, 
+              warmup = 10000, 
+              thin = 10, 
+              chains = 2, 
+              seed = 1234)
+```
+
+Recall these important concepts and arguments in ```brm()```.
+
+- ```iter```: the number of MCMC iterations.
+- ```warmup```: the number of burn-in iterations (i.e., the number of MCMC iterations to be discarded from the beginning of the MCMC chain).
+- ```thin```: thinning rate (i.e., every ```thin```-th draw is kept; e.g., when ```thin = 10```, every 10-th draw is saved.)
+- ```chains```: the number of MCMC chains.
+- ```seed```: the seed to obtain reproducible results.
+
+Recall function `mcmc_trace()` displays a traceplot of the simulated posterior draws for each chain.
+
+```{r fig.align = "center"}
+mcmc_trace(hm_fit, pars = c("sd_Title__Intercept"))
+```
+
+Recall function `mcmc_acf()` displays an autocorrelation plot of the simulated posterior draws.
+
+```{r fig.align = "center"}
+mcmc_acf_bar(hm_fit, pars = c("sd_Title__Intercept"))
+```
+
+::: {.panel-tabset}
+
+### Questions
+Describe the traceplot and autocorrelation plot of parameter ```sd_Title_Intercept``` from our model fit. Do you observe any convergence issues?
+
+### Short solution
+The traceplot shows the parameter going up and down randomly and the autocorrelation plot shows a quick decrease of the parameter's autocorrelation. They both do not seem to indicate convergence issues. The two chains show very similar results, also indicating no convergence issues.
+:::
+
+# Additional Bayesian inferential questions (~10 minutes)  {#sec-inference-additional}
+
+We include a couple of additional Bayesian inferential questions that are specific to hierarchical models.
+
+## Shrinkage/pooling effects
+
+The first type relates to what we call shrinkage/pooling effects. In our movie rating example, these questions are investigating how different the sample means and posterior means are, and subsequently showing how the pooling of information is achieved through hierarchica modeling.
+
+```{r fig.align = "center", echo = FALSE}
+J <- 8
+Post_Mus <- post_hm$b_Intercept + 
+  post_hm[, 4:11]
+Post_Means <- colMeans(Post_Mus)
+
+MovieRatings %>% group_by(Group_Number) %>%
+  summarize(Title = first(title),
+            N = n(), M = mean(rating),
+            SE = sd(rating) / sqrt(N)) -> Ind_Stats
+
+Means1 <- data.frame(Type = "Sample", Mean = Ind_Stats$M)
+Means2 <- data.frame(Type = "Posterior", Mean = Post_Means)
+Means1$Title <- c("Dragon", "Toy Story 3", "Shrek Forever",
+                  "Despicable Me", "Batman", "Guardians",
+                  "Megamind", "Tangled")
+Means2$Title <- c("Batman", "Despicable Me", "Dragon", "Guardians",
+                  "Megamind", "Shrek Forever",
+                   "Tangled", "Toy Story 3")
+df <- rbind(Means1, Means2)
+df$Type <- factor(df$Type, levels = c("Sample", "Posterior"))
+ggplot(df,
+       aes(Type, Mean, group=Title)) +
+  geom_line() + geom_point() +
+  annotate(geom = "text",
+           x = 0.75,
+           y = Means1$Mean + c(0.05, 0, 0.05, 0,
+                               0, -0.05, 0, 0),
+           size = 5,
+           label = Means1$Title) +
+  theme_bw()
+```
+
+::: {.panel-tabset}
+
+### Questions
+Describe your findings of the sample means (left) and the posterior means (right) in the shown plot. How would you describe the shrinkage/pooling effects from the hierarchical modeling?
+
+### Short solution
+Compared to the sample means, the posterior means are overall closer to each other, indicating the pooling effects. The most striking case is for the movie Batman, with a 5 sample mean to a 3.8-ish posterior mean. Such a big change also reflects the high uncertainty in estimation with a small sample size (only one rating for Batman). 
+:::
+
+## Sources of variability
+
+Similar to Analysis of Variance (ANOVA), we can identify two sources of variability in $Y_{ij}$.
+
+\begin{eqnarray*}
+Y_{ij} &\overset{i.i.d.}{\sim}& \textrm{Normal}(\mu_j, \sigma) \,\,\, \text{[within-group variability]} \\
+\mu_j &\sim& \textrm{Normal}(\mu, \tau) \,\,\, \text{[between-group variability]}
+\end{eqnarray*}
+
+To compare these two sources of variability, we can compute the fraction
+\begin{equation*}
+R = \frac{\tau^2}{\tau^2 + \sigma^2}
+\end{equation*}
+from the posterior draws of $\tau$ and $\sigma$.
+
+If $R \rightarrow 1$, the higher the between-group variability.
+
+::: panel-tabset
+## Code
+```{r echo = TRUE}
+tau_draws <- post_hm$sd_Title__Intercept
+sigma_draws <- post_hm$sigma
+R <- tau_draws^2/(tau_draws^2 + sigma_draws^2)
+quantile(R, c(0.025, 0.975))
+```
+
+## Plot
+```{r}
+df <- as.data.frame(R)
+ggplot(df, aes(x=R)) + 
+  geom_density() + 
+  labs(title="Density of R") + 
+  theme_bw()
+```
+:::
+
+::: {.panel-tabset}
+
+### Questions
+Describe density plot of ```R``` in the shown plot. What does it tell you about the source of variability in the movie ratings?
+
+### Short solution
+The value of ```R``` is overall low (lower than 0.2 for the most part), indicating a much stronger impact of the within-group variability (i.e., variability among ratings for the same movie) than that of the between-group variability (i.e., variability among the means from all movies).
+
+:::
+
+# Highlights in teaching {#sec-teaching-highlight}
+
+- Bayesian approaches are natural for observations nested in groups
+
+- Using 2 or more MCMC chains
+    - Diagnostics
+    - Inference
+    
+- Inference
+    - Credible intervals
+    - Prediction
+    - Model checking
+    
+- Additional inference topics for hierarchical modeling
+    - Shrinkage / pooling effects
+    - Sources of variability
+    
+    
+# Additional resources {#sec-additional-resources}
+
+- [Fully expanded analysis of the movie ratings example with JAGS](https://bayesball.github.io/BOOK/bayesian-hierarchical-modeling.html#hierarchical-normal-modeling)
+
+- [Hierarchical modeling for binomial outcome data with JAGS](https://bayesball.github.io/BOOK/bayesian-hierarchical-modeling.html#hierarchical-beta-binomial-modeling)
+
+- [Hierarchical modeling of proportions with brms](https://bayesball.github.io/BRMS/multilevel-modeling-of-proportions.html)
+
+- [Hierarchical regression with brms](https://bayesball.github.io/BRMS/multilevel-regression.html)
