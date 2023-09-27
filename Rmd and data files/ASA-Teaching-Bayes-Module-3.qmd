@@ -20,6 +20,12 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
 
 ```
 
+Before we start...
+
+Modules 1 and 2 introduced the principles of Bayesian analysis in simple settings encountered in introductory statistics courses. **Modules 3 and 4 apply Bayesian principles to fit more sophisticated models encountered in intermediate or advanced undergraduate statistics courses.**
+
+In the interest of time, Modules 3 and 4 assume familiarity with the Bayesian paradigm, and possibly also with commonly used frequentist counterparts (e.g., simple linear regression) if you want to compare the two paradigms. The focus of Modules 3 and 4 is on implementation of Bayesian models: how to set up these models in a Bayesian framework, how to implement model estimation in R and specifically the ```brms``` R package, what to look for in the output and how to interpret results.
+
 # Introduction {#sec-introduction}
 
 One commonly used class of Bayesian models in practice is Bayesian regressions. Just like classical inference with regression models, the choice of regression models depends on the nature of the outcome variable. For example,
@@ -406,7 +412,7 @@ sum(post_SLR$b_LogIncome >= 0.35)/length(post_SLR$b_LogIncome)
 
 ## Bayesian prediction and posterior predictive checks
 
-We can perform prediction and posterior predictive checks using the following example R code (refer to Moduel 2 for some detailed examples).
+We can perform prediction and posterior predictive checks using the following example R code (refer to Module 2 for some detailed examples).
 
 - **Prediction**: ```predict(SLR_Bayes_fit)```
 
@@ -438,6 +444,8 @@ We can perform prediction and posterior predictive checks using the following ex
     - Comparison to classical inference
     
 # Additional regressions {#sec-additiona-regressions}
+
+This section is for later reference.
 
 ## Sample script for multiple linear regression
 

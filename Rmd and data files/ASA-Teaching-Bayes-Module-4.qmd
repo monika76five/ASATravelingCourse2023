@@ -28,7 +28,7 @@ For such applications, on the one hand, following the commonly used independent 
 
 In Bayesian modeling, the hierarchical model approach can effectively take into account of the fact that observations belong to different groups, while simultaneously borrowing information across groups so that groups with few observations can have improved inference. As usual, model parameters are considered as random and therefore one can use **prior** distributions to quantify the degree of uncertainty in these parameters. With appropriate **Markov chain Monte Carlo (MCMC)** estimation tools, one could arrive at the **posterior** distributions of these parameters, based on which one can answer relevant research questions.
 
-In this Module, we will introduce a sample of animation movie ratings from 2010 and illustrate the usefulness of Bayesian hierarchical models in such settings. We will walk through the details of a hierarchical model that can be built for the movie ratings sample, how to perform MCMC estimation using the ```brms``` R package and how to perform MCMC diagnostics with 2 MCMC chains, and several posterior inference techniques to answer relevant questions about the data.
+In this Module, we will introduce a sample of animation movie ratings from 2010 and illustrate the usefulness of Bayesian hierarchical models in such settings. We will walk through the details of a hierarchical model that can be built for the movie ratings sample, how to perform MCMC estimation using the ```brms``` R package and how to perform MCMC diagnostics with more than one MCMC chains, and several posterior inference techniques to answer relevant questions about the data.
 
 
 # Observations in groups (~5 minutes) {#sec-obs-in-groups}
@@ -184,6 +184,7 @@ In the first stage, we assume the same normal prior distribution for each mean $
 \end{equation}
 
 This prior allows information pooled across movies (groups)
+
 - If $\tau$ is large, the $\mu_j$'s are very different a priori $\rightarrow$ modest pooling in parameter estimation
 - If $\tau$ is small, the $\mu_j$'s are very similar a priori $\rightarrow$ large pooling in parameter estimation
 
@@ -248,10 +249,12 @@ hm_fit <- brm(data = MovieRatings,
 ::: {.panel-tabset}
 
 ### Questions
-Review the example code above. How many MCMC iterations was run and how many MCMC iterations was saved?
+1. Review the example code above. How many MCMC iterations was run and how many MCMC iterations was saved?
+2. What do you think is the purpose of running 2 MCMC chains?
 
 ### Short solution
-There were 20000 MCMC iterations and 10000 for the warmup, meaning the last 10000 iterations were saved from each chain. Moreover, since ```thin = 10```, only 10\% of the iterations, which are 1000, were saved from each chain. With two chains, we have 2000 MCMC iterations saved. 
+1. There were 20000 MCMC iterations and 10000 for the warmup, meaning the last 10000 iterations were saved from each chain. Moreover, since ```thin = 10```, only 10\% of the iterations, which are 1000, were saved from each chain. With two chains, we have 2000 MCMC iterations saved.
+2. Apart from obtaining more posterior draws for analysis, running more than one MCMC chain facilitate our MCMC diagnostics. When the chains do not seem to converge to similar posterior space, we know there exists MCMC convergence issues.
 :::
 
 ## Extracting posterior draws
@@ -312,6 +315,9 @@ mcmc_areas(post_hm,
 
 ### Questions
 Describe your findings about $\mu$ and $\mu_j$'s, as well as about $\tau$ and $\sigma$ from the printed posterior plots.
+
+### Short solution
+The posterior distribution of $\mu$ is centered around 4. Each $\mu_j$ should be considered as a combination of $\mu$ and its distance from $\mu$ as in each movie-specific intercept. If we just focus on the movie-specific intercepts, we see that they are all somewhat centered around 0, although some clearly show a negative value (e.g., Dragon) while others clearly show a positive value (e.g., Tangled). As for the $\tau$ and $\sigma$, we see that $\sigma$ is overall larger and close to 1 where as $\tau$ is overall smaller and around 0.25. 
 
 :::
 
