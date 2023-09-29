@@ -19,3 +19,5 @@ Resources to share:
 7. The link to a 5-day bootcamp created for STEM educators who want to learn Bayesian methods so that they can introduce them in their curriculum: https://bayes-bats.github.io/bootcamp-material/
 
 8. The link to a reference for prior choices of standard deviations: http://www.stat.columbia.edu/~gelman/research/published/taumain.pdf
+
+9. The link to the Doing Bayesian Data Analysis book: https://jkkweb.sitehost.iu.edu/DoingBayesianDataAnalysis/
