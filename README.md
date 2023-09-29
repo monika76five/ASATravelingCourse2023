@@ -16,4 +16,6 @@ Resources to share:
 
 6. The link to the Bayes Rules! book: https://www.bayesrulesbook.com/
 
-7. Here is the link to a 5-day bootcamp created for STEM educators who want to learn Bayesian methods so that they can introduce them in their curriculum: https://bayes-bats.github.io/bootcamp-material/
+7. The link to a 5-day bootcamp created for STEM educators who want to learn Bayesian methods so that they can introduce them in their curriculum: https://bayes-bats.github.io/bootcamp-material/
+
+8. T link to a reference for prior choices of standard deviations: http://www.stat.columbia.edu/~gelman/research/published/taumain.pdf
