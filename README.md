@@ -11,3 +11,7 @@ Resources to share:
 3. Here is the Bayes ed section under ISBA (International Society for Bayesian Analysis): https://berap-isba.github.io/
 
 4. If you are curious about different computing methods when teaching Bayes, check out this paper: https://www.tandfonline.com/doi/full/10.1080/10691898.2020.1847008
+
+5. The link to the book by Jim Albert and Monika Hu: https://monika76five.github.io/ProbBayes/; a version of parts of it using brms package: https://bayesball.github.io/BRMS/
+
+6. The link to the Bayes Rules! book: https://www.bayesrulesbook.com/
