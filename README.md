@@ -15,3 +15,5 @@ Resources to share:
 5. The link to the book by Jim Albert and Monika Hu: https://monika76five.github.io/ProbBayes/; a version of parts of it using brms package: https://bayesball.github.io/BRMS/
 
 6. The link to the Bayes Rules! book: https://www.bayesrulesbook.com/
+
+7. Here is the link to a 5-day bootcamp created for STEM educators who want to learn Bayesian methods so that they can introduce them in their curriculum: https://bayes-bats.github.io/bootcamp-material/
