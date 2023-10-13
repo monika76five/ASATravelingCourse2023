@@ -22,4 +22,4 @@ Resources to share:
 
 9. The link to the Doing Bayesian Data Analysis book: https://jkkweb.sitehost.iu.edu/DoingBayesianDataAnalysis/
 
-10. The link to the Rethinking Statistics course, book, and resources: https://xcelab.net/rm/statistical-rethinking/
+10. The link to the Rethinking Statistics course, book, and resources: [https://xcelab.net/rm/statistical-rethinking/](https://xcelab.net/rm/statistical-rethinking/)https://xcelab.net/rm/statistical-rethinking/
