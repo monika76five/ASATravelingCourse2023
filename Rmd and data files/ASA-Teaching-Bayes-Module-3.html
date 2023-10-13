@@ -3448,7 +3448,7 @@ Y_i \mid \mu_i, \sigma &amp;\overset{ind}{\sim}&amp; \textrm{Normal}(\mu_i, \sig
       default</code></pre>
 </div>
 </div>
-<p>We can also use our own priors, e.g., using the following in the <code>brm()</code> function, which gives a Normal(0, 10) prior for <span class="math inline">\(\beta_0\)</span>, a Normal(0, 10) prior for <span class="math inline">\(\beta_1\)</span>, and a Caucy(0, 1) prior for <span class="math inline">\(\sigma\)</span>.</p>
+<p>We can also use our own priors, e.g., using the following in the <code>brm()</code> function, which gives a Normal(0, 10) prior for <span class="math inline">\(\beta_0\)</span>, a Normal(0, 10) prior for <span class="math inline">\(\beta_1\)</span>, and a half Caucy(0, 1) prior for <span class="math inline">\(\sigma\)</span>.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>prior <span class="ot">=</span> <span class="fu">c</span>(<span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">10</span>), <span class="at">class =</span> Intercept),</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>          <span class="fu">prior</span>(<span class="fu">normal</span>(<span class="dv">0</span>, <span class="dv">10</span>), <span class="at">class =</span> b),</span>

@@ -275,7 +275,7 @@ brms::get_prior(data = CEdata,
                 formula = LogExpenditure ~ 1 + LogIncome)
 ```
 
-We can also use our own priors, e.g., using the following in the ```brm()``` function, which gives a Normal(0, 10) prior for $\beta_0$, a Normal(0, 10) prior for $\beta_1$, and a Caucy(0, 1) prior for $\sigma$.
+We can also use our own priors, e.g., using the following in the ```brm()``` function, which gives a Normal(0, 10) prior for $\beta_0$, a Normal(0, 10) prior for $\beta_1$, and a half Caucy(0, 1) prior for $\sigma$.
 
 ```{r, eval = FALSE}
 prior = c(prior(normal(0, 10), class = Intercept),
